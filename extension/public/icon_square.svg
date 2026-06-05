@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer border -->
+  <rect x="32" y="32" width="448" height="448" rx="100" ry="100" fill="none" stroke="#1c2128" stroke-width="24"/>
+  <!-- Inner dark rounded square -->
+  <rect x="56" y="56" width="400" height="400" rx="80" ry="80" fill="#1c2128"/>
+  
+  <g stroke="#ffffff" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Left vertical line -->
+    <line x1="200" y1="180" x2="200" y2="332"/>
+    <!-- Left top dot -->
+    <circle cx="200" cy="180" r="28" fill="#1c2128"/>
+    <!-- Left bottom dot -->
+    <circle cx="200" cy="332" r="28" fill="#1c2128"/>
+    
+    <!-- Right bottom dot -->
+    <circle cx="312" cy="332" r="28" fill="#1c2128"/>
+    <!-- Right curved line with arrow pointing left -->
+    <path d="M312 304 v-50 c0-30 -20-50 -50-50 h-30" />
+    <!-- Arrowhead -->
+    <path d="M250 180 l-24 24 l24 24" />
+  </g>
+</svg>
