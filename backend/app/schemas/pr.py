@@ -5,6 +5,7 @@ from datetime import datetime
 class PRAnalysisRequest(BaseModel):
     repo_url: str
     pr_number: int
+    gemini_api_key: Optional[str] = None
 
 class PRAnalysisResponse(BaseModel):
     risk_score: Dict[str, Any]
@@ -18,6 +19,7 @@ class PRAnalysisResponse(BaseModel):
     changed_symbols: Dict[str, List[str]]
     security_findings: List[Dict[str, Any]] = []
     pr_type: Optional[str] = None
+    reviewability: Optional[Dict[str, Any]] = None
 
 class ReviewNoteBase(BaseModel):
     repo_url: str

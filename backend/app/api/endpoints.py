@@ -17,6 +17,7 @@ from app.services.architecture import validate_architecture
 from app.services.incident_similarity import find_similar_incidents
 from app.services.security_engine import analyze_security
 from app.services.dependency_engine import build_dependency_graph
+from app.services.reviewability_engine import calculate_reviewability
 from app.services.auth import create_access_token, verify_token
 from datetime import datetime
 import json
@@ -79,9 +80,21 @@ async def analyze_pr(request: PRAnalysisRequest):
 
         # 3. Dependency Intelligence (Call Graph & Impact)
         dependency_graph = build_dependency_graph(pr_data.get('files', []), symbols)
-        impact = analyze_impact(pr_data)
         
-        # Merge dependency graph into impact for richer UI
+        # Filter dependency graph (Hide symbols where upstream_callers == 0 AND downstream_calls == 0)
+        filtered_functions = []
+        for func in dependency_graph.get('modified_functions', []):
+            up = len(func.get('called_by', []))
+            down = len(func.get('calls', []))
+            if up > 0 or down > 0:
+                filtered_functions.append(func)
+                
+        # Sort by total impact descending
+        filtered_functions.sort(key=lambda x: len(x.get('called_by', [])) + len(x.get('calls', [])), reverse=True)
+        # Limit top 10
+        dependency_graph['modified_functions'] = filtered_functions[:10]
+        
+        impact = analyze_impact(pr_data)
         impact["dependency_graph"] = dependency_graph
         
         # 4. Security Findings Engine
@@ -92,14 +105,14 @@ async def analyze_pr(request: PRAnalysisRequest):
             raw_findings = analyze_security(pr_data.get('files', []))
             # Enrich with Gemini Explanations
             for finding in raw_findings:
-                enriched = explain_security_finding(finding)
+                enriched = explain_security_finding(finding, request.gemini_api_key)
                 security_findings.append(enriched)
                 
         # 5. Architecture & Similarity
         arch_violations = validate_architecture(pr_data)
         similar_incidents = find_similar_incidents(pr_data)
         
-        # 1. Deterministic risk engine
+        # 6. Deterministic risk engine
         risk_score = calculate_risk(
             pr_data=pr_data,
             pr_type=pr_type,
@@ -109,14 +122,21 @@ async def analyze_pr(request: PRAnalysisRequest):
             architecture_violations=arch_violations
         )
         
-        # 6. Build Context for LLM
+        # 7. Deterministic reviewability engine
+        reviewability = calculate_reviewability(
+            pr_data=pr_data,
+            security_findings=security_findings,
+            architecture_violations=arch_violations
+        )
+        
+        # 8. Build Context for LLM
         pr_context = build_pr_context(pr_data, risk_score, impact, arch_violations)
         
-        # 7. LLM Generators
-        checklist = generate_review_checklist(pr_context)
-        comments = generate_review_comments(pr_context)
-        exec_summary = generate_executive_summary(pr_context)
-        jira_context = extract_jira_context(pr_data)
+        # 9. LLM Generators
+        checklist = generate_review_checklist(pr_context, request.gemini_api_key)
+        comments = generate_review_comments(pr_context, request.gemini_api_key)
+        exec_summary = generate_executive_summary(pr_context, request.gemini_api_key)
+        jira_context = extract_jira_context(pr_data, request.gemini_api_key)
 
         return PRAnalysisResponse(
             risk_score=risk_score,
@@ -129,7 +149,8 @@ async def analyze_pr(request: PRAnalysisRequest):
             executive_summary=exec_summary,
             changed_symbols=symbols,
             security_findings=security_findings,
-            pr_type=pr_context.get('pr_type')
+            pr_type=pr_context.get('pr_type'),
+            reviewability=reviewability
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

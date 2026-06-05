@@ -40,11 +40,44 @@
   sidebar.appendChild(iframe);
   document.body.appendChild(sidebar);
   
-  // Adjust GitHub's layout to accommodate the sidebar
+  // Create an invisible overlay for the peek bar when collapsed
+  const peekBar = document.createElement("div");
+  Object.assign(peekBar.style, {
+    position: "absolute",
+    left: "0",
+    top: "0",
+    width: "10px",
+    height: "100%",
+    cursor: "pointer",
+    display: "none",
+    zIndex: "10",
+    backgroundColor: "transparent",
+    borderLeft: "2px solid #58a6ff"
+  });
+  
+  // On hover over peek bar, add a small highlight
+  peekBar.addEventListener("mouseenter", () => { peekBar.style.backgroundColor = "rgba(88, 166, 255, 0.2)"; });
+  peekBar.addEventListener("mouseleave", () => { peekBar.style.backgroundColor = "transparent"; });
+  
+  sidebar.appendChild(peekBar);
+  
+  // Add transition to sidebar
+  sidebar.style.transition = "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
+  
   const body = document.querySelector("body");
   if (body) {
+    body.style.transition = "padding-right 0.3s cubic-bezier(0.16, 1, 0.3, 1)";
     body.style.paddingRight = "400px";
   }
+  
+  let isCollapsed = false;
+  peekBar.addEventListener("click", () => {
+    isCollapsed = false;
+    sidebar.style.transform = "translateX(0)";
+    if (body) body.style.paddingRight = "400px";
+    peekBar.style.display = "none";
+  });
+
 
   // Listen for clipboard copy requests from the iframe
   window.addEventListener("message", (event) => {
@@ -57,6 +90,41 @@
         document.execCommand("copy");
         document.body.removeChild(textarea);
       });
+    } else if (event.data && event.data.type === "TOGGLE_COLLAPSE") {
+      isCollapsed = true;
+      sidebar.style.transform = "translateX(390px)";
+      if (body) body.style.paddingRight = "10px";
+      peekBar.style.display = "block";
+    } else if (event.data && event.data.type === "REQUEST_THEME") {
+      sendTheme();
     }
   });
+
+  function sendTheme() {
+    const computed = window.getComputedStyle(document.documentElement);
+    let style = ":root {\n";
+    // Iterate over explicitly defined variables or all styles
+    for (let i = 0; i < computed.length; i++) {
+      const prop = computed[i];
+      if (prop.startsWith('--color-') || prop.startsWith('--bgColor-') || prop.startsWith('--fgColor-') || prop.startsWith('--borderColor-')) {
+        style += `${prop}: ${computed.getPropertyValue(prop)};\n`;
+      }
+    }
+    style += "}";
+    iframe.contentWindow.postMessage({ type: "SYNC_THEME", style }, "*");
+  }
+  
+  // Also send theme on load and on DOM mutation
+  iframe.onload = () => {
+    sendTheme();
+  };
+  
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === 'attributes' && (m.attributeName === 'data-color-mode' || m.attributeName === 'data-dark-theme' || m.attributeName === 'data-light-theme')) {
+        sendTheme();
+      }
+    }
+  });
+  observer.observe(document.documentElement, { attributes: true });
 })();

@@ -1,20 +1,27 @@
-import google.generativeai as genai
+import requests
 import json
 import re
 from typing import Dict, Any, List
 from app.core.config import settings
 
-if settings.GEMINI_API_KEY:
-    genai.configure(api_key=settings.GEMINI_API_KEY)
-
-# Use standard prompt wrapper to prevent crashes if no API key is set
-def generate_content(prompt: str) -> str:
-    if not settings.GEMINI_API_KEY:
+def generate_content(prompt: str, api_key: str = None) -> str:
+    key_to_use = api_key or settings.GEMINI_API_KEY
+    if not key_to_use:
         return ""
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
-        response = model.generate_content(prompt)
-        return response.text
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key_to_use}"
+        headers = {'Content-Type': 'application/json'}
+        data = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.1}
+        }
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            res_json = response.json()
+            return res_json['candidates'][0]['content']['parts'][0]['text']
+        else:
+            print(f"Error generating content: {response.text}")
+            return ""
     except Exception as e:
         print(f"Error generating content: {e}")
         return ""
@@ -38,16 +45,9 @@ Architecture Violations: {context.get('architecture_violations')}
 
 Do not generate concerns unrelated to the modified files.
 If this is a documentation-only PR, focus entirely on documentation review.
-
-Do not hallucinate vulnerabilities.
-Do not hallucinate performance issues.
-Do not hallucinate testing requirements.
-Do not discuss code paths that were not modified.
-Only discuss evidence visible in the supplied PR context.
-If insufficient evidence exists, state that no significant concerns were found.
 """
 
-def generate_review_checklist(context: Dict[str, Any]) -> List[str]:
+def generate_review_checklist(context: Dict[str, Any], api_key: str = None) -> List[str]:
     base_prompt = build_base_prompt(context)
     pr_type = context.get('pr_type')
     
@@ -65,25 +65,29 @@ Generate a code review checklist with maximum 5 items based ONLY on the context 
 Never generate: null handling, performance bottlenecks, test coverage unless the modified code actually justifies those concerns.
 Output as a JSON list of strings.
 """
-    res = generate_content(prompt)
+    res = generate_content(prompt, api_key)
     parsed = parse_json_response(res)
     if isinstance(parsed, list):
         return parsed[:5]
     return ["Verify code changes against requirements"]
 
-def generate_review_comments(context: Dict[str, Any]) -> List[Dict[str, Any]]:
+def generate_review_comments(context: Dict[str, Any], api_key: str = None) -> List[Dict[str, Any]]:
     base_prompt = build_base_prompt(context)
     prompt = f"""{base_prompt}
-Generate up to 5 specific review comments for this PR grounded in actual changes.
+Generate up to 3 high-impact specific review comments for this PR grounded in actual changes.
+
+VALUE FILTER (CRITICAL):
+REJECT style-only comments, formatting comments, minor naming comments, cosmetic suggestions, redundant annotation suggestions, and trivial refactors.
+ALLOW potential bugs, edge cases, validation issues, concurrency concerns, testing gaps, error handling issues, performance risks, security concerns, architecture concerns, dependency concerns.
 
 Rules:
 Only generate a comment if:
-1. There is evidence in the diff
-2. The comment references a changed file
-3. The comment references actual modified logic
+1. It passes the VALUE FILTER.
+2. There is evidence in the diff.
+3. The comment references actual modified logic.
 
-Never invent try-except recommendations, security vulnerabilities, or missing tests unless supported by modified code.
-If confidence is low or no issues exist, return an empty list [].
+Never invent try-except recommendations, security vulnerabilities, or missing tests unless explicitly supported by modified code.
+If confidence is low (< 80) or no issues exist, return an empty list [].
 
 Output as a JSON list of objects with 'file', 'issue', 'suggestion', 'reasoning', 'confidence' (0-100), and 'severity' ("Critical", "Warning", or "Suggestion").
 
@@ -97,17 +101,23 @@ Example:
     "severity": "Warning"
 }}]
 """
-    res = generate_content(prompt)
+    res = generate_content(prompt, api_key)
     parsed = parse_json_response(res)
     comments = []
     if isinstance(parsed, list):
         for c in parsed:
-            if isinstance(c, dict) and c.get('confidence', 0) >= 70:
+            if isinstance(c, dict) and c.get('confidence', 0) >= 80:
                 comments.append(c)
-        return sorted(comments, key=lambda x: x.get('confidence', 0), reverse=True)[:5]
+                
+        def severity_score(sev):
+            if sev == "Critical": return 3
+            if sev == "Warning": return 2
+            return 1
+            
+        return sorted(comments, key=lambda x: (severity_score(x.get('severity')), x.get('confidence', 0)), reverse=True)[:3]
     return []
 
-def explain_security_finding(finding: dict) -> dict:
+def explain_security_finding(finding: dict, api_key: str = None) -> dict:
     prompt = f"""
 Explain the following security finding deterministically discovered by the security engine.
 DO NOT detect vulnerabilities. Only EXPLAIN what was found.
@@ -125,7 +135,7 @@ Return JSON with:
 "recommendation": "How to fix it safely.",
 "impact_summary": "What happens if exploited."
 """
-    res = generate_content(prompt)
+    res = generate_content(prompt, api_key)
     parsed = parse_json_response(res)
     if isinstance(parsed, dict):
         return {
@@ -136,37 +146,36 @@ Return JSON with:
         }
     return finding
 
-def generate_executive_summary(context: Dict[str, Any]) -> str:
+def generate_executive_summary(context: Dict[str, Any], api_key: str = None) -> str:
     base_prompt = build_base_prompt(context)
-    pr_type = context.get('pr_type')
     
-    rules = ""
-    if pr_type == "DOCS":
-        rules = "discuss documentation impact. do not discuss tests. do not discuss runtime risk."
-    elif pr_type == "TEST":
-        rules = "discuss test coverage impact."
-    elif pr_type == "BACKEND":
-        rules = "discuss system impact."
-    elif pr_type == "SECURITY":
-        rules = "discuss security implications."
-        
     prompt = f"""{base_prompt}
-Write a concise executive engineering summary for this PR for a Tech Lead.
-{rules}
-Summary must explicitly reference actual files changed. Include purpose, risks, impacted systems, and recommendations.
+Write a concise executive engineering summary for this PR for a Tech Lead or Senior Engineer.
 
-FORMATTING RULES:
-You MUST use proper Markdown headings starting with ### (e.g., ### Purpose, ### Risks, ### Impacted Systems, ### Recommendations).
-Do NOT use bold text (**) for headings.
-Always add two newlines (\n\n) after a heading so the content starts on the next line.
-Use bullet points for lists.
+REQUIREMENTS:
+1. Maximum 120 words.
+2. DO NOT INCLUDE: file lists, function lists, long explanations, code snippets, directory names.
+3. Must use EXACTLY these four headings using standard markdown `###`: Purpose, Risk, Impact, Recommendation.
+
+Format EXACTLY like this:
+### Purpose
+[1-2 sentences]
+
+### Risk
+[Medium/High/Low]. [1 sentence reason]
+
+### Impact
+[1 sentence]
+
+### Recommendation
+[1 sentence]
 """
-    res = generate_content(prompt)
+    res = generate_content(prompt, api_key)
     if res:
         return res
-    return "This PR modifies specific files but no significant concerns were automatically detected."
+    return "### Purpose\nMinor updates.\n\n### Risk\nLow.\n\n### Impact\nMinimal.\n\n### Recommendation\nApprove."
 
-def extract_jira_context(pr_data: Dict[str, Any]) -> Dict[str, Any]:
+def extract_jira_context(pr_data: Dict[str, Any], api_key: str = None) -> Dict[str, Any]:
     text = f"{pr_data.get('title', '')} {pr_data.get('description', '')}"
     jira_pattern = r'[A-Z]+-\d+'
     matches = re.findall(jira_pattern, text)
@@ -176,17 +185,20 @@ def extract_jira_context(pr_data: Dict[str, Any]) -> Dict[str, Any]:
         
     ticket_id = matches[0]
     
-    prompt = f"Given Jira ticket {ticket_id} and PR title '{pr_data.get('title')}', generate a 'PR Alignment Summary' answering: Does this PR appear aligned with ticket requirements? Provide a confidence score out of 100. Output as JSON with 'title', 'status', 'priority', 'acceptance_criteria', 'summary', 'confidence'."
-    res = generate_content(prompt)
+    prompt = f"Given Jira ticket {ticket_id} and PR title '{pr_data.get('title')}', generate Jira Alignment intelligence. Output JSON exactly with keys: 'Ticket', 'Confidence' (number 0-100), 'Coverage' (e.g. '3 / 4'), 'Missing Requirements' (string describing potential gaps)."
+    res = generate_content(prompt, api_key)
     parsed = parse_json_response(res)
     if isinstance(parsed, dict):
-        return parsed
+        return {
+            "Ticket": ticket_id,
+            "Confidence": parsed.get("Confidence", 80),
+            "Coverage": parsed.get("Coverage", "N/A"),
+            "Missing_Requirements": parsed.get("Missing Requirements", "None detected")
+        }
         
     return {
-        "title": f"Feature implementation for {ticket_id}",
-        "status": "In Progress",
-        "priority": "High",
-        "acceptance_criteria": "Code meets basic standards.",
-        "summary": "PR appears aligned with standard requirements based on title.",
-        "confidence": 80
+        "Ticket": ticket_id,
+        "Confidence": 80,
+        "Coverage": "N/A",
+        "Missing_Requirements": "None detected"
     }
