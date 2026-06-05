@@ -77,7 +77,7 @@ async def analyze_pr(request: PRAnalysisRequest):
         symbols = analyze_symbols(pr_data)
 
         # 3. Dependency Intelligence (Call Graph & Impact)
-        dependency_graph = build_dependency_graph(pr_data.get('changed_files', []), symbols)
+        dependency_graph = build_dependency_graph(pr_data.get('files', []), symbols)
         impact = analyze_impact(pr_data)
         
         # Merge dependency graph into impact for richer UI
@@ -90,7 +90,7 @@ async def analyze_pr(request: PRAnalysisRequest):
             is_docs_pr = True
             
         if not is_docs_pr:
-            raw_findings = analyze_security(pr_data.get('changed_files', []))
+            raw_findings = analyze_security(pr_data.get('files', []))
             # Enrich with Gemini Explanations
             for finding in raw_findings:
                 enriched = explain_security_finding(finding)

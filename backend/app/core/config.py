@@ -11,3 +11,4 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 settings = Settings()
+settings.DATABASE_URL = "sqlite:///./prscope.db"

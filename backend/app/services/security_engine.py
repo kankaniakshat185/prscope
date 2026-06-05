@@ -22,7 +22,7 @@ def analyze_security(files_changed: list) -> list:
         (re.compile(r'pickle\.loads\s*\('), "Unsafe Deserialization", "High", "Use of pickle.loads() detected."),
         (re.compile(r'yaml\.load\s*\('), "Unsafe Deserialization", "High", "Use of yaml.load() detected. Prefer yaml.safe_load()."),
         # SQL Injection (f-strings with SELECT/UPDATE/INSERT/DELETE)
-        (re.compile(r'f["\'].*(?i)(SELECT|UPDATE|INSERT|DELETE).*\{.*\}.*["\']'), "SQL Injection", "Critical", "Potential SQL Injection via f-string interpolation.")
+        (re.compile(r'(?i)f["\'].*(SELECT|UPDATE|INSERT|DELETE).*\{.*\}.*["\']'), "SQL Injection", "Critical", "Potential SQL Injection via f-string interpolation.")
     ]
 
     for f in files_changed:
