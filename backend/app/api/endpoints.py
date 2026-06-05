@@ -19,8 +19,10 @@ from app.services.security_engine import analyze_security
 from app.services.dependency_engine import build_dependency_graph
 from app.services.reviewability_engine import calculate_reviewability
 from app.services.auth import create_access_token, verify_token
+from app.core.config import settings
 from datetime import datetime
 import json
+import httpx
 
 router = APIRouter()
 

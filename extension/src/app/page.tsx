@@ -32,6 +32,9 @@ function MainDashboard() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
 
+  // IN PRODUCTION: Change this to your deployed API URL
+  const API_BASE = "https://prscope.onrender.com";
+
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
@@ -87,8 +90,6 @@ function MainDashboard() {
 
   const loginWithGitHub = async () => {
     try {
-      // IN PRODUCTION: Change this to your deployed API URL
-      const API_BASE = "https://prscope.onrender.com";
       const res = await fetch(`${API_BASE}/api/analysis/auth/github/login`);
       const data = await res.json();
 
@@ -121,7 +122,7 @@ function MainDashboard() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://localhost:8000/api/analysis/analyze", {
+      const response = await fetch(`${API_BASE}/api/analysis/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -148,7 +149,7 @@ function MainDashboard() {
     }
     setNoteSaving(true);
     try {
-      const response = await fetch("http://localhost:8000/api/analysis/workspace/reviews", {
+      const response = await fetch(`${API_BASE}/api/analysis/workspace/reviews`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -186,7 +187,7 @@ function MainDashboard() {
         sort: sortOrder,
         search: searchQuery
       });
-      const response = await fetch(`http://localhost:8000/api/analysis/workspace/reviews?${q.toString()}`, {
+      const response = await fetch(`${API_BASE}/api/analysis/workspace/reviews?${q.toString()}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -200,10 +201,10 @@ function MainDashboard() {
 
   const fetchReviewDetails = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/api/analysis/workspace/reviews/${id}`, {
+      const response = await fetch(`${API_BASE}/api/analysis/workspace/reviews/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
-      const eventsRes = await fetch(`http://localhost:8000/api/analysis/workspace/reviews/${id}/events`, {
+      const eventsRes = await fetch(`${API_BASE}/api/analysis/workspace/reviews/${id}/events`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
@@ -219,7 +220,7 @@ function MainDashboard() {
   const postCommentToGithub = async (comment: any, index: number) => {
     setPostingComment(index.toString());
     try {
-      const response = await fetch("http://localhost:8000/api/analysis/post-comment", {
+      const response = await fetch(`${API_BASE}/api/analysis/post-comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
