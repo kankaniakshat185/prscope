@@ -55,11 +55,14 @@ async def github_callback(code: str, db: Session = Depends(get_db)):
         # Real OAuth Flow
         async with httpx.AsyncClient() as client:
             # 1. Exchange code for access token
+            client_id_val = settings.GITHUB_CLIENT_ID.strip() if settings.GITHUB_CLIENT_ID else ""
+            client_secret_val = settings.GITHUB_CLIENT_SECRET.strip() if settings.GITHUB_CLIENT_SECRET else ""
+            
             token_res = await client.post(
                 "https://github.com/login/oauth/access_token",
                 data={
-                    "client_id": settings.GITHUB_CLIENT_ID,
-                    "client_secret": settings.GITHUB_CLIENT_SECRET,
+                    "client_id": client_id_val,
+                    "client_secret": client_secret_val,
                     "code": code
                 },
                 headers={"Accept": "application/json"}
@@ -68,7 +71,7 @@ async def github_callback(code: str, db: Session = Depends(get_db)):
             access_token = token_data.get("access_token")
             
             if not access_token:
-                raise HTTPException(status_code=400, detail=f"Failed to get access token from GitHub: {token_data}")
+                raise HTTPException(status_code=400, detail=f"Failed to get access token from GitHub: {token_data}. Secret len: {len(client_secret_val)}, ID len: {len(client_id_val)}")
                 
             # 2. Fetch user profile
             user_res = await client.get(
