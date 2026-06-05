@@ -11,7 +11,7 @@
     right: "0",
     width: "400px",
     height: "100vh",
-    backgroundColor: "#0d1117",
+    backgroundColor: "#010409",
     borderLeft: "1px solid #30363d",
     zIndex: "999999",
     boxShadow: "-2px 0 8px rgba(0,0,0,0.5)"
@@ -29,6 +29,7 @@
   }
 
   iframe.src = chrome.runtime.getURL(`index.html${prUrl}`);
+  iframe.allow = "clipboard-write";
   
   Object.assign(iframe.style, {
     width: "100%",
@@ -44,4 +45,18 @@
   if (body) {
     body.style.paddingRight = "400px";
   }
+
+  // Listen for clipboard copy requests from the iframe
+  window.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "COPY_TO_CLIPBOARD") {
+      navigator.clipboard.writeText(event.data.text).catch(err => {
+        const textarea = document.createElement("textarea");
+        textarea.value = event.data.text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      });
+    }
+  });
 })();

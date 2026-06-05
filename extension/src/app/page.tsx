@@ -196,13 +196,13 @@ function MainDashboard() {
     if (!data) return;
     const securityTxt = data.security_findings?.map((f:any)=> `- ${f.severity} ${f.name} in ${f.file}`).join('\n') || 'None';
     const md = `# PRScope Review\n\n**Repository**: ${owner}/${repo}\n**PR**: #${pr}\n**Risk**: ${data.risk_score.score}/10 (${data.risk_score.category})\n\n**Changed Symbols**:\n${data.changed_symbols?.functions_modified?.map((f:string)=>`- ${f}`).join('\n') || 'None'}\n\n**Security Findings**:\n${securityTxt}\n\n**Status**: ${noteStatus}\n\n**Review Notes**:\n${noteText || 'None'}\n\n**Summary**:\n${data.executive_summary}`;
-    navigator.clipboard.writeText(md);
+    window.parent.postMessage({ type: "COPY_TO_CLIPBOARD", text: md }, "*");
     alert("Review Snapshot copied to clipboard!");
   };
 
   if (!owner || !repo || !pr) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0d1117] text-[#c9d1d9]" style={{ fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'" }}>
+      <div className="flex h-screen items-center justify-center bg-[#010409] text-[#c9d1d9]" style={{ fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'" }}>
         <div className="text-center p-6 border border-[#30363d] rounded-md bg-[#161b22]">
           <ShieldAlert className="mx-auto h-12 w-12 text-[#8b949e] mb-4" />
           <h2 className="text-lg font-semibold">PRScope Active</h2>
@@ -218,17 +218,17 @@ function MainDashboard() {
   }
 
   // Common GitHub Native Styles
-  const boxStyle = "bg-[#0d1117] border border-[#30363d] rounded-md overflow-hidden shadow-sm";
+  const boxStyle = "bg-[#010409] border border-[#30363d] rounded-md overflow-hidden shadow-sm";
   const headerStyle = "bg-[#161b22] px-4 py-3 m-0";
   const buttonStyle = "bg-[#21262d] border border-[#363b42] text-[#c9d1d9] hover:bg-[#30363d] hover:border-[#8b949e] transition-colors rounded-md text-sm font-medium py-1.5 px-3";
   const primaryButtonStyle = "bg-[#1f7530] border border-[rgba(240,246,252,0.1)] text-white hover:bg-[#1a6825] transition-colors rounded-md text-sm font-medium py-1.5 px-3";
   const textPrimary = "text-[#c9d1d9]";
   const textSecondary = "text-[#8b949e]";
-  const inputStyle = "bg-[#0d1117] border border-[#30363d] rounded-md p-2 text-sm text-[#c9d1d9] outline-none focus:border-[#8b949e] focus:ring-1 focus:ring-[#8b949e]";
+  const inputStyle = "bg-[#010409] border border-[#30363d] rounded-md p-2 text-sm text-[#c9d1d9] outline-none focus:border-[#8b949e] focus:ring-1 focus:ring-[#8b949e]";
   const containerFont = { fontFamily: "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'" };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9] p-4 overflow-y-auto" style={containerFont}>
+    <div className="min-h-screen bg-[#010409] text-[#c9d1d9] p-4 overflow-y-auto" style={containerFont}>
       <div className="flex items-center gap-2 mb-4 pb-4 border-b border-[#30363d]">
         <GitMerge className="h-5 w-5 text-[#8b949e]" />
         <h1 className="text-lg font-semibold tracking-tight text-[#c9d1d9]">PRScope</h1>
@@ -309,7 +309,7 @@ function MainDashboard() {
                     {data.risk_score.category}
                   </Badge>
                 </div>
-                <div className="p-4 bg-[#0d1117]">
+                <div className="p-4 bg-[#010409]">
                   <div className="flex items-end gap-2 mb-3">
                     <span className="text-2xl font-semibold text-[#c9d1d9] leading-none">{data.risk_score.score}</span>
                     <span className={`text-sm ${textSecondary} leading-none mb-0.5`}>/ 10</span>
@@ -341,7 +341,7 @@ function MainDashboard() {
               </div>
 
               {/* Accordions Container */}
-              <Accordion type="multiple" className="w-full space-y-3" defaultValue={["executive_summary", "security"]}>
+              <Accordion type="multiple" className="w-full space-y-3" defaultValue={["executive_summary"]}>
                 
                 {/* 2. Executive Summary */}
                 <AccordionItem value="executive_summary" className={boxStyle}>
@@ -351,7 +351,7 @@ function MainDashboard() {
                       Executive Summary
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-4 bg-[#0d1117] border-t border-[#30363d]">
+                  <AccordionContent className="p-4 bg-[#010409] border-t border-[#30363d]">
                     <div className="text-sm text-[#c9d1d9] leading-relaxed max-w-none break-words">
                       <ReactMarkdown 
                         remarkPlugins={[remarkGfm]}
@@ -379,7 +379,7 @@ function MainDashboard() {
                       )}
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-4 bg-[#0d1117] border-t border-[#30363d]">
+                  <AccordionContent className="p-4 bg-[#010409] border-t border-[#30363d]">
                     {data.security_findings && data.security_findings.length > 0 ? (
                       <div className="space-y-4">
                         {data.security_findings.map((finding: any, i: number) => (
@@ -391,12 +391,12 @@ function MainDashboard() {
                               </div>
                               <Badge variant="outline" className="border-[#30363d] text-[10px] text-[#8b949e]">{finding.confidence}% Confidence</Badge>
                             </div>
-                            <div className="text-xs text-[#8b949e] mb-2 font-mono truncate bg-[#0d1117] p-1.5 rounded border border-[#30363d]">
+                            <div className="text-xs text-[#8b949e] mb-2 font-mono truncate bg-[#010409] p-1.5 rounded border border-[#30363d]">
                               {finding.file}
                             </div>
                             <div className="text-xs text-[#c9d1d9] mb-3">{finding.reason}</div>
                             {finding.ai_explanation && (
-                              <div className="mt-3 p-3 bg-[#0d1117] border border-[#30363d] rounded-md text-xs space-y-2">
+                              <div className="mt-3 p-3 bg-[#010409] border border-[#30363d] rounded-md text-xs space-y-2">
                                 <div><span className="font-semibold text-[#c9d1d9]">AI Explanation:</span> {finding.ai_explanation}</div>
                                 <div><span className="font-semibold text-[#3fb950]">Recommendation:</span> {finding.ai_recommendation}</div>
                                 <div><span className="font-semibold text-[#d29922]">Impact:</span> {finding.ai_impact_summary}</div>
@@ -419,7 +419,7 @@ function MainDashboard() {
                       Review Checklist
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-4 bg-[#0d1117] border-t border-[#30363d]">
+                  <AccordionContent className="p-4 bg-[#010409] border-t border-[#30363d]">
                     <div className="space-y-3">
                       {data.review_checklist && data.review_checklist.map((item: string, i: number) => (
                         <div key={i} className="flex items-start gap-3 bg-[#161b22] border border-[#30363d] p-3 rounded-md shadow-sm break-words">
@@ -439,7 +439,7 @@ function MainDashboard() {
                       Suggested Comments
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-4 bg-[#0d1117] border-t border-[#30363d]">
+                  <AccordionContent className="p-4 bg-[#010409] border-t border-[#30363d]">
                     {data.suggested_comments && data.suggested_comments.length > 0 ? (
                       <div className="space-y-3">
                         {data.suggested_comments.map((comment: any, i: number) => (
@@ -488,7 +488,7 @@ function MainDashboard() {
                       Dependency Intelligence
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-4 bg-[#0d1117] border-t border-[#30363d]">
+                  <AccordionContent className="p-4 bg-[#010409] border-t border-[#30363d]">
                     <div className="space-y-4">
                       <div className={`text-xs ${textSecondary}`}>
                         Impacted Services: {data.impact_analysis?.affected_services?.join(", ") || "None"} <br/>
@@ -534,7 +534,7 @@ function MainDashboard() {
                       Changed Symbols
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-4 bg-[#0d1117] border-t border-[#30363d]">
+                  <AccordionContent className="p-4 bg-[#010409] border-t border-[#30363d]">
                     <div className="space-y-4">
                       {data.changed_symbols && data.changed_symbols.functions_modified?.length > 0 && (
                         <div>
@@ -568,7 +568,7 @@ function MainDashboard() {
                       Review Notes
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="p-4 bg-[#0d1117] border-t border-[#30363d]">
+                  <AccordionContent className="p-4 bg-[#010409] border-t border-[#30363d]">
                     <select 
                       value={noteStatus}
                       onChange={(e) => setNoteStatus(e.target.value)}
@@ -622,7 +622,7 @@ function MainDashboard() {
                   <div className="font-semibold">{selectedReview.repository} #{selectedReview.pr_number}</div>
                   <Badge variant="outline" className="border-[#30363d]">{selectedReview.review_status}</Badge>
                 </div>
-                <div className="p-4 space-y-4 text-sm bg-[#0d1117]">
+                <div className="p-4 space-y-4 text-sm bg-[#010409]">
                   <div className="grid grid-cols-2 gap-4 text-xs">
                     <div>
                       <span className="text-[#8b949e] block mb-1">Risk Score</span>

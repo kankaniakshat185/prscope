@@ -1,8 +1,22 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 
-def calculate_risk(pr_data: Dict[str, Any]) -> Dict[str, Any]:
+def calculate_risk(
+    pr_data: Dict[str, Any],
+    pr_type: str,
+    changed_symbols: Dict[str, List[str]],
+    dependency_impact: Dict[str, Any],
+    security_findings: List[Dict[str, Any]],
+    architecture_violations: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     score = 0
     factors = []
+    
+    if pr_type == "DOCS":
+        return {
+            "score": 0,
+            "category": "Low Risk",
+            "factor_breakdown": []
+        }
     
     additions = pr_data.get("additions", 0)
     deletions = pr_data.get("deletions", 0)
@@ -10,49 +24,130 @@ def calculate_risk(pr_data: Dict[str, Any]) -> Dict[str, Any]:
     changed_files = pr_data.get("changed_files", 0)
     files = pr_data.get("files", [])
     
-    # Rule 1: LOC changed
-    if total_loc > 1000:
+    # 1. LOC Scoring
+    if total_loc >= 1000:
         score += 3
-        factors.append({"name": "High LOC changed", "weight": 3, "reason": f"{total_loc} lines changed"})
-    elif total_loc > 300:
-        score += 1
-        factors.append({"name": "Moderate LOC changed", "weight": 1, "reason": f"{total_loc} lines changed"})
-        
-    # Rule 2: Files changed
-    if changed_files > 20:
+        factors.append({"name": "Massive LOC Change", "weight": 3, "reason": f"{total_loc} lines changed"})
+    elif total_loc >= 501:
         score += 2
-        factors.append({"name": "Many files changed", "weight": 2, "reason": f"{changed_files} files changed"})
+        factors.append({"name": "Large LOC Change", "weight": 2, "reason": f"{total_loc} lines changed"})
+    elif total_loc >= 101:
+        score += 1
+        factors.append({"name": "Moderate LOC Change", "weight": 1, "reason": f"{total_loc} lines changed"})
         
-    # Rule 3: Critical directories
-    critical_dirs = ["core", "auth", "payment", "security"]
-    touched_critical = []
+    # 2. Files Changed
+    if changed_files >= 50:
+        score += 3
+        factors.append({"name": "Massive File Surface", "weight": 3, "reason": f"{changed_files} files changed"})
+    elif changed_files >= 21:
+        score += 2
+        factors.append({"name": "Large File Surface", "weight": 2, "reason": f"{changed_files} files changed"})
+    elif changed_files >= 11:
+        score += 1
+        factors.append({"name": "Moderate File Surface", "weight": 1, "reason": f"{changed_files} files changed"})
+        
+    # 3. Critical Path Scoring
+    critical_dirs = ["backend/auth", "backend/payment", "backend/core", "backend/security", "core", "auth", "payment", "security"]
+    touched_critical = set()
     has_tests = False
     
     for f in files:
         filename = f.get("filename", "")
-        if "test" in filename.lower():
+        if "test" in filename.lower() or filename.startswith("tests/"):
             has_tests = True
         
         for d in critical_dirs:
-            if f"/{d}/" in filename or filename.startswith(f"{d}/"):
-                if d not in touched_critical:
-                    touched_critical.append(d)
-                    
-    if touched_critical:
+            if f"/{d}/" in filename or filename.startswith(f"{d}/") or d in filename.split("/"):
+                touched_critical.add(d)
+                
+    if len(touched_critical) > 1:
         score += 3
-        factors.append({"name": "Critical directories touched", "weight": 3, "reason": f"Modified: {', '.join(touched_critical)}"})
-        
-    # Rule 4: Tests
-    if total_loc > 100 and not has_tests:
+        factors.append({"name": "Multiple Critical Paths Modified", "weight": 3, "reason": f"Modified: {', '.join(touched_critical)}"})
+    elif len(touched_critical) == 1:
         score += 2
-        factors.append({"name": "No tests modified", "weight": 2, "reason": "No test files detected in a large change"})
+        factors.append({"name": "Critical Path Modified", "weight": 2, "reason": f"Modified: {list(touched_critical)[0]}"})
         
-    # Normalize score
+    # 4. Test Coverage Signal
+    if pr_type in ["BACKEND", "FRONTEND", "SECURITY", "DATABASE", "INFRASTRUCTURE", "MIXED"]:
+        if total_loc > 0 and not has_tests:
+            if total_loc > 500:
+                score += 2
+                factors.append({"name": "No Tests Updated (Large Change)", "weight": 2, "reason": "No test files modified for >500 LOC change"})
+            else:
+                score += 1
+                factors.append({"name": "No Tests Updated", "weight": 1, "reason": "No test files modified"})
+                
+    # 5. Architecture Violations
+    if architecture_violations:
+        arch_pts = min(len(architecture_violations) * 2, 3)
+        score += arch_pts
+        factors.append({"name": "Architecture Violations", "weight": arch_pts, "reason": f"{len(architecture_violations)} violations detected"})
+        
+    # 6. Security Findings Integration
+    sec_pts = 0
+    high_sev_names = []
+    for sf in security_findings:
+        sev = sf.get("severity", "Low")
+        if sev == "Critical":
+            sec_pts += 3
+            high_sev_names.append(sf.get("name", "Unknown"))
+        elif sev == "High":
+            sec_pts += 2
+            high_sev_names.append(sf.get("name", "Unknown"))
+        elif sev == "Medium":
+            sec_pts += 1
+            high_sev_names.append(sf.get("name", "Unknown"))
+            
+    if sec_pts > 0:
+        sec_pts = min(sec_pts, 3)
+        score += sec_pts
+        factors.append({"name": "Security Findings", "weight": sec_pts, "reason": f"Findings detected: {', '.join(high_sev_names[:2])}{'...' if len(high_sev_names)>2 else ''}"})
+        
+    # 7. Changed Symbol Analysis
+    num_symbols = 0
+    num_symbols += len(changed_symbols.get("functions_modified", []))
+    num_symbols += len(changed_symbols.get("functions_added", []))
+    num_symbols += len(changed_symbols.get("functions_removed", []))
+    num_symbols += len(changed_symbols.get("classes_modified", []))
+    
+    if num_symbols >= 11:
+        score += 2
+        factors.append({"name": "Large Symbol Surface", "weight": 2, "reason": f"{num_symbols} symbols modified"})
+    elif num_symbols >= 6:
+        score += 1
+        factors.append({"name": "Moderate Symbol Surface", "weight": 1, "reason": f"{num_symbols} symbols modified"})
+        
+    # 8. Dependency Impact Scoring
+    dep_graph = dependency_impact.get("dependency_graph", {})
+    downstream_callers = set()
+    for func in dep_graph.get("modified_functions", []):
+        for caller in func.get("called_by", []):
+            downstream_callers.add(caller)
+            
+    num_callers = len(downstream_callers)
+    if num_callers >= 11:
+        score += 2
+        factors.append({"name": "High Dependency Impact", "weight": 2, "reason": f"{num_callers} downstream callers affected"})
+    elif num_callers >= 6:
+        score += 1
+        factors.append({"name": "Moderate Dependency Impact", "weight": 1, "reason": f"{num_callers} downstream callers affected"})
+        
+    # 9. Multi-Service Impact
+    affected_services = dependency_impact.get("affected_services", [])
+    num_services = len(affected_services)
+    if num_services >= 3:
+        score += 2
+        factors.append({"name": "Widespread Service Impact", "weight": 2, "reason": f"{num_services} services impacted"})
+    elif num_services == 2:
+        score += 1
+        factors.append({"name": "Multi-Service Impact", "weight": 1, "reason": "2 services impacted"})
+        
+    # 10. Risk Normalization & Categories
     score = min(10, score)
     
-    if score >= 7:
+    if score >= 6:
         category = "High Risk"
-    elif score >= 4:
+    elif score >= 3:
         category = "Medium Risk"
     else:
         category = "Low Risk"

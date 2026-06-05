@@ -67,11 +67,12 @@ def github_callback(code: str, db: Session = Depends(get_db)):
 
 @router.post("/analyze", response_model=PRAnalysisResponse)
 async def analyze_pr(request: PRAnalysisRequest):
+    from app.services.context_builder import classify_pr
+    
     try:
         pr_data = await fetch_pr_data(request.repo_url, request.pr_number)
         
-        # 1. Deterministic risk engine
-        risk_score = calculate_risk(pr_data)
+        pr_type = classify_pr(pr_data.get('files', []))
         
         # 2. Extract changed symbols
         symbols = analyze_symbols(pr_data)
@@ -85,9 +86,7 @@ async def analyze_pr(request: PRAnalysisRequest):
         
         # 4. Security Findings Engine
         security_findings = []
-        is_docs_pr = False
-        if pr_data.get("title", "").lower().startswith("docs:") or pr_data.get("title", "").lower().startswith("[docs]"):
-            is_docs_pr = True
+        is_docs_pr = (pr_type == "DOCS")
             
         if not is_docs_pr:
             raw_findings = analyze_security(pr_data.get('files', []))
@@ -99,6 +98,16 @@ async def analyze_pr(request: PRAnalysisRequest):
         # 5. Architecture & Similarity
         arch_violations = validate_architecture(pr_data)
         similar_incidents = find_similar_incidents(pr_data)
+        
+        # 1. Deterministic risk engine
+        risk_score = calculate_risk(
+            pr_data=pr_data,
+            pr_type=pr_type,
+            changed_symbols=symbols,
+            dependency_impact=impact,
+            security_findings=security_findings,
+            architecture_violations=arch_violations
+        )
         
         # 6. Build Context for LLM
         pr_context = build_pr_context(pr_data, risk_score, impact, arch_violations)
