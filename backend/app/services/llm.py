@@ -177,13 +177,13 @@ Format EXACTLY like this:
     if res and "RATE_LIMIT_EXCEEDED" not in res:
         return res
         
-    return """### ⚠️ Global Rate Limit Exceeded
+    return """### Global Rate Limit Exceeded
 The global free-tier Gemini API pool is currently experiencing exceptionally high demand and has temporarily rate-limited inference requests.
 
-### ⚡ Instant Bypass (BYOK)
+### Instant Bypass (BYOK)
 You can instantly bypass this global queue by providing your own free Google Gemini API Key. Click the **Settings (⚙️)** gear icon in the top right corner of the extension to securely add your key to local storage for unlimited inference.
 
-### 🔄 Automatic Refresh
+### Automatic Refresh
 Alternatively, you can wait a short moment for the global API quota pool to refresh and retry the analysis.
 
 > *Note: Deterministic security scanning, dependency intelligence, and architecture rule validations are unaffected by this limit and have executed successfully below.*"""

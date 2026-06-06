@@ -359,7 +359,7 @@ function MainDashboard() {
   // Common GitHub Native Styles
   const boxStyle = "bg-transparent border-t border-[var(--borderColor-default,var(--color-border-default,#30363d))]";
   const headerStyle = "bg-transparent px-0 py-3 m-0";
-  const buttonStyle = "bg-secondary text-secondary-foreground border border-border hover:opacity-80 transition-opacity rounded-md text-sm font-medium py-1.5 px-3";
+  const buttonStyle = "bg-[var(--bgColor-neutral-muted,var(--color-neutral-muted,#21262d))] border border-[var(--fgColor-muted,var(--color-fg-muted,#8b949e))] text-[var(--fgColor-default,var(--color-fg-default,#c9d1d9))] hover:opacity-80 transition-opacity rounded-md text-sm font-medium py-1.5 px-3";
   const primaryButtonStyle = "bg-[#1f7530] border border-[rgba(240,246,252,0.1)] text-white hover:bg-[#1a6825] transition-colors rounded-md text-sm font-medium py-1.5 px-3";
   const textPrimary = "text-[var(--fgColor-default,var(--color-fg-default,#c9d1d9))]";
   const textSecondary = "text-[var(--fgColor-muted,var(--color-fg-muted,#8b949e))]";
@@ -448,13 +448,13 @@ function MainDashboard() {
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setActiveTab("PR_REVIEW")}
-          className={`flex-1 py-1.5 text-sm font-medium rounded-md border transition-colors ${activeTab === "PR_REVIEW" ? "bg-secondary text-secondary-foreground border-ring/50" : "bg-transparent text-muted-foreground border-transparent hover:bg-secondary/50"}`}
+          className={`flex-1 py-1.5 text-sm font-medium rounded-md border transition-colors ${activeTab === "PR_REVIEW" ? "bg-[var(--bgColor-neutral-muted,var(--color-neutral-muted,#21262d))] text-[var(--fgColor-default,var(--color-fg-default,#c9d1d9))] border-[var(--fgColor-muted,var(--color-fg-muted,#8b949e))]" : "bg-transparent text-[var(--fgColor-muted,var(--color-fg-muted,#8b949e))] border-transparent hover:bg-[var(--bgColor-neutral-muted,var(--color-neutral-muted,#21262d))]"}`}
         >
           PR Review
         </button>
         <button
           onClick={() => setActiveTab("SAVED_REVIEWS")}
-          className={`flex-1 py-1.5 text-sm font-medium rounded-md border transition-colors ${activeTab === "SAVED_REVIEWS" ? "bg-secondary text-secondary-foreground border-ring/50" : "bg-transparent text-muted-foreground border-transparent hover:bg-secondary/50"}`}
+          className={`flex-1 py-1.5 text-sm font-medium rounded-md border transition-colors ${activeTab === "SAVED_REVIEWS" ? "bg-[var(--bgColor-neutral-muted,var(--color-neutral-muted,#21262d))] text-[var(--fgColor-default,var(--color-fg-default,#c9d1d9))] border-[var(--fgColor-muted,var(--color-fg-muted,#8b949e))]" : "bg-transparent text-[var(--fgColor-muted,var(--color-fg-muted,#8b949e))] border-transparent hover:bg-[var(--bgColor-neutral-muted,var(--color-neutral-muted,#21262d))]"}`}
         >
           Saved Reviews
         </button>
@@ -485,9 +485,9 @@ function MainDashboard() {
                   Copy Snapshot
                 </button>
                 {data.pr_type && (
-                  <div className="flex-1 flex items-center justify-center px-3 py-1.5 bg-muted border border-border rounded-md text-sm whitespace-nowrap">
-                    <span className="text-muted-foreground mr-1.5 text-xs font-semibold uppercase tracking-wide">PR Type:</span>
-                    <span className="font-medium text-foreground">{data.pr_type}</span>
+                  <div className={`flex-1 flex items-center justify-center px-3 py-1.5 bg-[var(--bgColor-muted,var(--color-canvas-subtle,#161b22))] border border-[var(--fgColor-muted,var(--color-fg-muted,#8b949e))] rounded-md text-sm whitespace-nowrap`}>
+                    <span className="text-[var(--fgColor-muted,var(--color-fg-muted,#8b949e))] mr-1.5 text-xs font-semibold uppercase tracking-wide">PR Type:</span>
+                    <span className="font-medium text-[var(--fgColor-default,var(--color-fg-default,#c9d1d9))]">{data.pr_type}</span>
                   </div>
                 )}
               </div>
