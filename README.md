@@ -74,6 +74,17 @@ graph TD
     LLM --> Gemini
 ```
 
+## Usage Guide
+
+To use the PRScope extension effectively on any GitHub repository:
+
+1. **Installation:** Install the extension from the Chrome Web Store (or load the unpacked `out` directory locally).
+2. **Navigate to a PR:** Open any active Pull Request on GitHub. You will notice the PRScope interface seamlessly injected into the GitHub sidebar or as a floating panel.
+3. **Authentication:** Click the "Login with GitHub" button within the extension to securely authenticate and generate a session token.
+4. **Configure BYOK (Optional but Recommended):** Click the **Settings (⚙️)** gear icon in the top right corner of the extension and enter your personal Google Gemini API Key to bypass global rate limits and ensure unrestricted analysis.
+5. **Run Analysis:** The extension automatically reads the PR diff, context, and issue descriptions. It will present a comprehensive Risk Assessment, Dependency Graph, Security Findings, and actionable Review Comments.
+6. **Save Snapshots:** Use the "Copy Snapshot" button to instantly copy the AI-generated executive summary and findings to your clipboard, ready to be pasted as a formal GitHub review.
+
 ## Local Development Initialization
 
 To run the application locally for contribution or self-hosting, follow the steps below.
